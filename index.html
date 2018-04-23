@@ -1,0 +1,249 @@
+  <!DOCTYPE html>
+  <html>
+    <head>
+ <title>DJI Go mod waypoint mission planning</title>
+  <meta name="description" content="DJI Go mod waypoint mission planning"> 
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+  <link rel="icon" type="image/png" href="images/icon.png" />
+  <link rel="icon" sizes="192x192" href="images/chrome.png">
+  <meta name="theme-color" content="#ffffff">
+
+      <!--Import Google Icon Font-->
+      <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+      <!--Import materialize.css-->
+
+      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0-beta/css/materialize.min.css">
+ <link rel="stylesheet" href="https://unpkg.com/leaflet@1.3.1/dist/leaflet.css"
+   integrity="sha512-Rksm5RenBEKSKFjgI3a41vrjkw4EVPlJ3+OiI65vTjIdo9brlAacEuKOiQ5OFh7cOI1bkDwLqdLw3Zg0cRJAAQ=="
+   crossorigin=""/>
+      <!--Let browser know website is optimized for mobile-->
+      <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    </head>
+    <style>
+        body {
+            padding: 0;
+            margin: 0;
+        }
+        html, body, #map {
+            height: 100%;
+            width: 100%;
+        }
+
+
+        .tip {
+          border-radius:0px;
+          opacity: 0.5;
+}
+.leaflet-popup-content-wrapper {
+  border-radius: 0px;
+  width:100px;
+
+}
+.leaflet-tooltip-left.tip::before {
+  
+}
+.leaflet-tooltip-right.tip::before {
+  
+}
+
+.plane_img{
+  transform: rotate(90deg);
+  transform-origin: 50%;
+  width: 50px;
+  height: 50px;
+
+}
+
+.fileupload input {
+    position: absolute;
+    top: 0;
+    right: 0; /* not left, because only the right part of the input seems to
+                 be clickable in some browser I can't remember */
+    cursor: pointer;
+    opacity: 0.0;
+    filter: alpha(opacity=0); /* and all the other old opacity stuff you
+                                 want to support */
+    font-size: 300px; /* wtf, but apparently the most reliable way to make
+                         a large part of the input clickable in most browsers */
+    height: 200px;
+}
+    </style>
+    <body>
+<div style="position: absolute;z-index:1001;width:100%;">
+<div class="row">
+    <div class="col s12 m6">
+      <div class="card-panel ">
+        <div class="row">
+          <div class="col s12 m12" style="padding-bottom: 5px;">
+            Points: <b id="points_span">0</b>  Total distance: <b id="m_span">0</b> m. <br>
+            Fly time: <b id="time_span">00:00</b> (At speeds <input id="speed" size="1" class="browser-default" value="10" type="text" > m/s)
+          </div>          
+          <div class="col s12 m12">
+             <a id="sbut1" onclick="save_all()" class="disabled waves-effect green waves-light btn-small"><i class="material-icons left">done</i>Save</a>
+             <a onclick="clear_all()" class="waves-effect red waves-light btn-small"><i class="material-icons left">clear</i>Clear</a>
+          </div>
+
+
+        </div>
+        
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="plane_div" style="display:none;position: absolute;top:50%;margin-left:-25px;margin-top: -25px;left:50%;z-index: 9999;">
+  <img class="plane_img"  src="images/plane.png"/>
+</div>
+
+      <div style="" id="map"></div>
+
+
+
+  <div id="about_modal" class="modal">
+    <div class="modal-content">
+      
+      
+
+  <h5>Read this first!</h5>
+
+      
+  <ul class="collapsible">
+    <li>
+      <div class="collapsible-header">English</div>
+      <div class="collapsible-body"><span>
+        
+The service works only with a modified version of DJI go 4 (you can download <a href="https://sparkpilots.zone/threads/dji-go-4-mod-2-0-dji-go-4-mod-lite-additional-features-android-app-ver-4-1-15.3841/">here</a>). Set the mission points, adjust the settings of each point and click "save". Open the DJ go mod program database file (usually located in /sdcard/DJI folder), all changes are saved and the file is downloaded to the downloads folder automatically. After that, replace the original file downloaded.
+
+
+      </span></div>
+    </li>
+    <li>
+      <div class="collapsible-header">Русский</div>
+      <div class="collapsible-body"><span>
+        
+Сервис работает только с модифицированной версией DJI go 4 (скачать можно <a href="https://sparkpilots.zone/threads/dji-go-4-mod-2-0-dji-go-4-mod-lite-additional-features-android-app-ver-4-1-15.3841/">тут</a>). Установите точки миссии, настройте параметры каждой точки и нажмите "сохранить". Откройте файл с базой данных программы DJI go mod (обычно находится в папке /sdcart/DJI), все изменения сохранятся и файл скачается в папку загрузок автоматически. После этого, замените оригинальный файл скаченным.
+
+
+      </span></div>
+    </li>
+
+  </ul>
+
+  <form >
+    <p>
+      <label>
+        <input id="dnt" type="checkbox" />
+        <span>Don't show it anymore</span>
+      </label>
+    </p>
+  
+  </form>
+
+
+
+
+
+
+
+</div>
+
+    <div class="modal-footer">
+      <a  class="modal-action modal-close waves-effect waves-green btn-flat">Ok</a>
+    </div>
+  </div>
+
+
+
+
+  <div id="save_modal" class="modal">
+    <div class="modal-content">
+      
+      
+<div id="opendiv" class="row center">
+  <h5>Open database file</h5>
+  <span>Open DJI Go mod database file (on android: /sdcard/DJI/dji_mod_4_1_15.db)</span><br><br>
+<div class="fileupload">
+  <input id="finput" type="file" />
+  <button onclick="upl_helper()" class="waves-effect waves-light btn-large green"><i class="material-icons left">file_upload</i>Upload</button>
+</div>
+</div>
+<div id="loadingdiv" style="display: none;" class="row center">
+   <h5>Processing...</h5>
+  <div class="preloader-wrapper big active">
+    <div class="spinner-layer spinner-blue-only">
+      <div class="circle-clipper left">
+        <div class="circle"></div>
+      </div><div class="gap-patch">
+        <div class="circle"></div>
+      </div><div class="circle-clipper right">
+        <div class="circle"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="donediv" style="display: none;" class="row center">
+   <h5>All done! The file will automatically load. Copy it back to the DJI folder on your android device and confirm the replacement.</h5>
+  
+  </div>
+</div>
+
+    <div class="modal-footer">
+      <a href="#" class="modal-action modal-close waves-effect waves-green btn-flat">Cancel</a>
+    </div>
+  </div>
+
+
+  <div id="modal1" class="modal  bottom-sheet">
+    <div class="modal-content">
+      <div class="row">
+        <div class="col s12 m6 offset-m3">
+          <div class="row">
+       <div class="input-field col s6 m6">
+          <input id="fly_height" value="50" type="text" class="validate">
+          <label for="fly_height">Height (metres)</label>
+        </div>
+       <div class="input-field col s6 m6">
+          <input id="fly_pitch" value="0" type="text" class="validate">
+          <label for="fly_pitch">Camera pitch (degrees)</label>
+        </div>
+       <div class="input-field col s12 m12">
+              <p class="range-field">
+               <input type="range" id="fly_yaw" oninput="updateSlider(this.value)" min="0" max="360" />
+               </p>
+        </div>
+
+       <div class="input-field col s12 m6 offset-m3 center">
+        <a id="save_but" onclick="save_edit()" class="waves-effect waves-light btn green"><i class="material-icons left">done</i>Save</a>
+        <a  onclick="cancel_edit()" class="waves-effect waves-light btn btn-flat ">Cancel</a>
+              
+        </div>
+
+            </div>
+            
+          </div>
+
+      
+        
+      </div>
+    </div>
+
+  </div>
+
+
+
+
+      <!--JavaScript at end of body for optimized loading-->
+     <script src="//code.jquery.com/jquery-2.2.4.min.js"></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0-beta/js/materialize.min.js"></script>
+      <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA5zS1TRI1mBhRxjqXcl_7Q0N5oZ2MUo8E" async defer></script>
+
+      <script src="https://unpkg.com/leaflet@1.3.1/dist/leaflet.js"
+   integrity="sha512-/Nsx9X4HebavoBvEBuyp3I7od5tA0UzAxs+j83KgC8PU0kgB4XiK4Lfe4y4cgBtaRJQEIFCW+oC506aPT2L1zw=="
+   crossorigin=""></script>
+   <script src='https://unpkg.com/leaflet.gridlayer.googlemutant@latest/Leaflet.GoogleMutant.js'></script>
+   <script src="js/worker.sql.js"></script>
+
+            <script src="js/main.js"></script>
+    </body>
+  </html>
